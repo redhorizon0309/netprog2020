@@ -1,4 +1,4 @@
-USTH CS Network PRogramming
+USTH CS Network Programming
 =====================================
 
 Students are expected to:
