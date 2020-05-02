@@ -1,0 +1,80 @@
+\documentclass{article}
+
+\title{Labwork 2}
+\author{Tran Truong Giang}
+
+\beign{document}
+\maketitle
+
+
+\section{Code} % (fold)
+\label{sec:code}
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <stdio.h>
+
+extern int h_errno;
+
+int main() {
+
+	char hostname[256];
+	printf("* Enter host name: ");
+    scanf("%s", hostname);
+
+    struct hostent *host_ip_data = gethostbyname(hostname); 
+	char *host_ip = inet_ntoa(*(struct in_addr*) host_ip_data->h_addr_list[0]);
+
+	printf("* The ip of %s is: %s\n", hostname, host_ip);
+
+}
+% section code (end)
+
+\section{First attempt} % (fold)
+\label{sec:attempt1}
+
+red@ubuntu:~/Desktop$ gcc gethostip.c -o gethostip
+red@ubuntu:~/Desktop$ ./gethostip 
+* Enter host name: usth.edu.vn
+* The ip of usth.edu.vn is: 104.27.161.15
+
+giangtt_bi9090@testmachine:~$ gcc -g gethostip.c -o gethostip
+giangtt_bi9090@testmachine:~$ ./gethostip 
+* Enter host name: usth.edu.vn
+* The ip of usth.edu.vn is: 104.27.160.15
+
+% section attempt1 (end)
+
+\section{Second attempt} % (fold)
+\label{sec:attempt2}
+
+giangtt_bi9090@testmachine:~$ ./gethostip 
+* Enter host name: usth.edu.vn
+* The ip of usth.edu.vn is: 104.27.161.15
+
+red@ubuntu:~/Desktop$ ./gethostip 
+* Enter host name: usth.edu.vn
+* The ip of usth.edu.vn is: 104.27.160.15
+
+% section attempt2 (end)
+
+\section{Explaination} % (fold)
+\label{sec:explaination}
+
+I check the code on the virtual machine first than the vps and the resulst are as above 
+after 15 minutes I check again this time with the reverse order vps first and than the virtual machine.
+I found out that the ip are also reverse.
+
+% section explaination (end)
+
+\section{Conclusion} % (fold)
+\label{sec:conclusion}
+
+My conclusion is when ever a machine communicate with another it use a ip adress and 
+after idle for a while it will kill the connection and use that ip to communicate others with incoming connection
+hence the difference in ip and the changes of ip through time.
+
+% section conclusion (end)
+
+\end{document}
