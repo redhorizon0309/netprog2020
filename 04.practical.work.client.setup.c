@@ -17,8 +17,7 @@ void func(int sockfd)
         bzero(buff, sizeof(buff)); 
         printf("Enter message : "); 
         n = 0; 
-        while ((buff[n++] = getchar()) != '\n') 
-            ; 
+        while ((buff[n++] = getchar()) != '\n'); 
         write(sockfd, buff, sizeof(buff)); 
         bzero(buff, sizeof(buff)); 
         read(sockfd, buff, sizeof(buff)); 
