@@ -4,52 +4,32 @@
 #include <stdlib.h> 
 #include <string.h> 
 #include <netinet/in.h>
+#include <fcntl.h> 
+#include <sys/socket.h> 
+#include <sys/types.h> 
 
 #define MAX 80
 #define PORT 8784
 #define SA struct sockaddr 
 
+char buff[MAX];
 
-void func(int sockfd) 
-{ 
-    char buff[MAX];
-    int n; 
-    for (;;) { 
-        
-        printf("Client : ");  
-        
-        bzero(buff, sizeof(buff));
-        scanf("%s", buff);
-        if (strncmp("exit", buff, 4) == 0) {
-            bzero(buff, sizeof(buff));
-            buff[] ="clexit";
-            send(sockfd, buff, 6, 0);
-            recv(sockfd, buff, 6, 0);
-            if (strncmp("svexit", buff, 6) == 0)
-                close(sockfd);
-        } else {
-            int l1 = strlen(buff) + 1;
-            n = send(sockfd, buff, l1, 0);
-            printf(" %d char", n);
-        }  
-
-	memset(buff, 0, sizeof(buff));
-	recv(sockfd, buff, sizeof(buff), 0);
-        if (strncmp("svexit",sizeof(buff)) == 0) {
-            bzero(buff, sizeof(buff));
-            buff[] = "clexit";
-            send(sockfd, buff, 6, 0);
-            shutdown(sockfd, WR);
-            recv(sockfd, buff, 6, 0);
-            if (strncmp("svexit",sizeof(buff)) == 0) 
-                close(sockfd);
-        } else
-	    printf("Server: %s\n", buff);
-
-        
-    } 
-} 
+void send_msg(int sockfd,char buff[MAX]) {
+    int l1 = strlen(buff) + 1;
+    send(sockfd, buff, l1, 0);
+}
   
+void recv_msg(int sockfd) {
+    char buff[MAX];
+    memset(buff, 0, sizeof(buff));
+    int n = recv(sockfd, buff, sizeof(buff), 0);
+	printf("Server: %s\n", buff);
+    if (strncmp("exit", buff, 4) == 0) { 
+        shutdown(sockfd, SHUT_RDWR);
+        close(sockfd);        
+    }
+}
+
 int main() 
 { 
     int sockfd, connfd; 
@@ -67,7 +47,7 @@ int main()
     bzero(&servaddr, sizeof(servaddr)); 
     
     // assign IP, PORT 
-    if ((h=gethostbyname("127.0.0.1")) == NULL) {
+    if ((h=gethostbyname("localhost")) == NULL) {
         printf("unknow host \n");
     }
     memset(&servaddr, 0, sizeof(servaddr));
@@ -79,11 +59,27 @@ int main()
     if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) < 0) { 
         printf("connection with the server failed...\n"); 
         exit(0); 
-    } 
-    else
+    } else
         printf("connected to the server..\n"); 
-  
+
+
     // function for chat 
-    func(sockfd); 
+    while(1) {
+        printf("Client : ");  
+        memset(buff, 0, sizeof(buff));
+        scanf("%s", buff);
+        if (strncmp("exit", buff, 4) == 0) { 
+            printf("Client exit...\n"); 
+            send_msg(sockfd, buff);
+            shutdown(sockfd, SHUT_RDWR);
+            close(sockfd);
+            break;
+        } else       
+        send_msg(sockfd, buff);
+
+        memset(buff, 0, sizeof(buff));
+        recv_msg(sockfd);
+        if (strncmp("exit", buff, 4) == 0) {
+    }
 
 } 
