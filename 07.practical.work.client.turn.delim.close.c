@@ -33,8 +33,8 @@ void func(int sockfd)
             printf(" %d char", n);
         }  
 
-		memset(buff, 0, sizeof(buff));
-		recv(sockfd, buff, sizeof(buff), 0);
+	memset(buff, 0, sizeof(buff));
+	recv(sockfd, buff, sizeof(buff), 0);
         if (strncmp("svexit",sizeof(buff)) == 0) {
             bzero(buff, sizeof(buff));
             buff[] = "clexit";
@@ -44,7 +44,7 @@ void func(int sockfd)
             if (strncmp("svexit",sizeof(buff)) == 0) 
                 close(sockfd);
         } else
-		    printf("Server: %s\n", buff);
+	    printf("Server: %s\n", buff);
 
         
     } 
