@@ -12,49 +12,23 @@
 #define PORT 8784 
 #define SA struct sockaddr 
 
-char buff[MAX]; 
+char buff[MAX];
 
-// Function designed for chat between client and server. 
-void func(int sockfd) 
-{ 
-    int n;
-    // infinite loop for chat 
-    for (;;) { 
-        bzero(buff, sizeof(buff));
-        n = recv(sockfd, buff, sizeof(buff), 0);
-        int first = 0;
-        if (strncmp("clexit",sizeof(buff)) == 0) {
-            bzero(buff, sizeof(buff));
-            buff[] = "svexit";
-            send(sockfd, buff, 6, 0);
-            shutdown(sockfd, WR);
-            recv(sockfd, buff, 6, 0);
-            if (strncmp("clexit",sizeof(buff)) == 0) 
-                close(sockfd);
-        } else {
-            for (int i = 0; i < n; i++) {
-                if(buff[i] == '\0') {
-                    printf("Client : %s\n", buff[first]);
-                    first = i + 1;
-                }
-            }
-        }
-
-        printf("Server : ");
-        bzero(buff, sizeof(buff));
-        scanf("%s", buff);
-        if (strncmp("exit", buff, 4) == 0) {
-            bzero(buff, sizeof(buff));
-            buff[] ="svexit";
-            send(sockfd, buff, 6, 0);
-            recv(sockfd, buff, 6, 0);
-            if (strncmp("clexit", buff, 6) == 0)
-                close(sockfd); 
-        } else
-            send(sockfd, buff, strlen(buff) + 1, 0);  
-        
-    } 
-} 
+void send_msg(int sockfd,char buff[MAX]) {
+    int n = strlen(buff) + 1;
+    send(sockfd, buff, n, 0);
+}
+  
+void recv_msg(int sockfd) {
+    char buff[MAX];
+    memset(buff, 0, sizeof(buff));
+    int n = recv(sockfd, buff, sizeof(buff), 0);
+    printf("Client: %s\n", buff);
+    if (strncmp("exit", buff, 4) == 0) {
+        send(sockfd, buff, 5, 0);
+        close(sockfd);
+    }    
+}
 
   
 // Driver function 
@@ -65,21 +39,21 @@ int main()
   
     // socket create and verification 
     sockfd = socket(AF_INET, SOCK_STREAM, 0); 
-    if (sockfd == -1) { 
+    if (sockfd < 0) { 
         printf("socket creation failed...\n"); 
         exit(0); 
     } 
     else
         printf("Socket successfully created..\n"); 
     bzero(&servaddr, sizeof(servaddr)); 
-  
+
     // assign IP, PORT 
     servaddr.sin_family = AF_INET; 
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY); 
     servaddr.sin_port = htons(PORT); 
   
     // Binding newly created socket to given IP and verification 
-    if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) { 
+    if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) < 0) { 
         printf("socket bind failed...\n"); 
         exit(0); 
     } 
@@ -105,6 +79,20 @@ int main()
         printf("server acccept the client...\n"); 
   
     // Function for chatting between client and server 
-    func(connfd); 
+    while(1) {
+        recv_msg(connfd);
+                
+        printf("Server : ");  
+        memset(buff, 0, sizeof(buff));
+        scanf("%s", buff);
+        if (strncmp("exit", buff, 4) == 0) { 
+            printf("Server exit...\n");
+            send_msg(connfd, buff);
+            shutdown(connfd, SHUT_RDWR);
+            close(connfd);
+            break;
+        } else
+        send_msg(connfd, buff);
+    }
   
 }
