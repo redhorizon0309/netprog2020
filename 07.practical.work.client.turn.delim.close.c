@@ -79,7 +79,5 @@ int main()
 
         memset(buff, 0, sizeof(buff));
         recv_msg(sockfd);
-        if (strncmp("exit", buff, 4) == 0) {
     }
-
 } 
