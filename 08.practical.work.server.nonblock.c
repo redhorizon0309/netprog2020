@@ -14,26 +14,36 @@
 
 char buff[MAX];
 
-void send_msg(int sockfd,char buff[MAX]) {
+int send_msg(int sockfd,char buff[MAX]) {
     int n = strlen(buff) + 1;
     send(sockfd, buff, n, 0);
+    if (strncmp("exit", buff, 4) == 0) {
+        printf("Disconnecting ...");
+        return 1;
+    }
+    return 0;
 }
   
-void recv_msg(int sockfd) {
+int recv_msg(int sockfd) {
     char buff[MAX];
     memset(buff, 0, sizeof(buff));
     int n = recv(sockfd, buff, sizeof(buff), 0);
-    printf("Client: %s\n", buff);
-    if (strncmp("exit", buff, 4) == 0) {
-        send(sockfd, buff, 5, 0);
-        close(sockfd);
-    }    
+    if (n < 0) {
+        return -1;
+    } else {
+        printf("Client: %s\n", buff);
+        if (strncmp("exit", buff, 4) == 0) {
+            send(sockfd, buff, 5, 0);
+            close(sockfd);
+            return 1;
+        }   
+        return 0;
+    } 
 }
 
   
 // Driver function 
-int main() 
-{ 
+int main() { 
     int sockfd, connfd, len; 
     struct sockaddr_in servaddr, cli; 
   
@@ -66,16 +76,15 @@ int main()
         printf("Socket successfully binded..\n"); 
   
     // Now server is ready to listen and verification 
-    if ((listen(sockfd, 5)) != 0) { 
-        printf("Listen failed...\n"); 
-        exit(0); 
-    } 
-    else
-        printf("Server listening..\n"); 
-    len = sizeof(cli); 
-  
-    
-LOOP:   while(1) {
+LOOP:   while (1) {
+            if ((listen(sockfd, 5)) != 0) { 
+                printf("Listen failed...\n"); 
+                exit(0); 
+            } 
+            else
+                printf("Server listening..\n"); 
+            len = sizeof(cli); 
+        
             connfd = accept(sockfd, (SA*)&cli, &len); 
             if (connfd > 0) {
                 printf("server acccept the client...\n"); 
@@ -83,21 +92,25 @@ LOOP:   while(1) {
                 int fl = fcntl(connfd, F_GETFL, 0);
                 fl |= O_NONBLOCK;
                 fcntl(connfd, F_SETFL, fl);
-                while(1) {
+                while (1) {
+                    memset(buff, 0, sizeof(buff));
                     recv_msg(connfd);
-                            
+                    if (recv_msg(connfd) == 1)
+                        break;
+
                     printf("Server : ");  
                     memset(buff, 0, sizeof(buff));
                     scanf("%s", buff);
                     if (strncmp("exit", buff, 4) == 0) { 
-                        printf("Server exit...\n");
+                        printf("Server exit...\n"); 
                         send_msg(connfd, buff);
                         shutdown(connfd, SHUT_RDWR);
                         close(connfd);
-                        goto LOOP;
-                    } else
-                    send_msg(connfd, buff);
+                        break;
+                    } else     
+                        send_msg(connfd, buff);
                 }
-            } 
-        }       
+                goto LOOP;
+            }
+        }
 }

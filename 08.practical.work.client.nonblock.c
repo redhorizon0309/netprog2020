@@ -14,20 +14,31 @@
 
 char buff[MAX];
 
-void send_msg(int sockfd,char buff[MAX]) {
+int send_msg(int sockfd,char buff[MAX]) {
     int l1 = strlen(buff) + 1;
     send(sockfd, buff, l1, 0);
+    if (strncmp("exit", buff, 4) == 0) {
+        printf("Disconnecting ...");
+        return 1;
+    }
+    return 0;    
 }
   
-void recv_msg(int sockfd) {
+int recv_msg(int sockfd) {
     char buff[MAX];
     memset(buff, 0, sizeof(buff));
     int n = recv(sockfd, buff, sizeof(buff), 0);
-	printf("Server: %s\n", buff);
-    if (strncmp("exit", buff, 4) == 0) { 
-        shutdown(sockfd, SHUT_RDWR);
-        close(sockfd);        
-    }
+    if (n < 0) {
+        return -1;
+    } else {
+        printf("Server: %s\n", buff);
+        if (strncmp("exit", buff, 4) == 0) {
+            send(sockfd, buff, 5, 0);
+            close(sockfd);
+            return 1;
+        }   
+        return 0;
+    } 
 }
 
 int main() 
@@ -82,6 +93,8 @@ int main()
 
         memset(buff, 0, sizeof(buff));
         recv_msg(sockfd);
+        if (recv_msg(sockfd) == 1)
+            break;
     }    
 
 } 
