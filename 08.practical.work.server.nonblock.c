@@ -23,6 +23,7 @@ void recv_msg(int sockfd) {
     char buff[MAX];
     memset(buff, 0, sizeof(buff));
     int n = recv(sockfd, buff, sizeof(buff), 0);
+    printf("receive %d char \n", n);
     printf("Client: %s\n", buff);
     if (strncmp("exit", buff, 4) == 0) {
         send(sockfd, buff, 5, 0);
