@@ -11,7 +11,7 @@
 #define PORT 8080 
 #define SA struct sockaddr
 
-void sentFile(int sockfd, const char *file_name) { 
+void sentFile(int sockfd, const char *file_name, int size) { 
     char buff[MAX];       // for read operation from file and used to sent operation 
     
     // create file 
@@ -24,7 +24,7 @@ void sentFile(int sockfd, const char *file_name) {
     }
     
     while ( fgets(buff,MAX,fp) != NULL ) // fgets reads upto MAX character or EOF 
-    send(sockfd,buff,sizeof(buff),0);  // sent the file data to stream
+    send(sockfd,buff,size,0);  // sent the file data to stream
     
     fclose (fp);       // close the file 
     
@@ -99,7 +99,7 @@ int main() {
             fsize = findSize(filename);
             if ((fsize > 0) && (fsize < 9999)) {
                 send(sockfd, fsize, 4, 0);
-                sentFile(sockfd, filename);
+                sentFile(sockfd, filename, fsize);
             } else
                 send(sockfd, "0000", 4, 0);
         }
