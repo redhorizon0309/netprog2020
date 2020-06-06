@@ -1,42 +1,41 @@
-#include <stdlib.h> // for basic memmory allocation and deallocation
-#include <stdio.h> // for file read and write
+#include <stdlib.h> 
+#include <stdio.h> 
 #include <netdb.h> 
 #include <netinet/in.h> 
 #include <string.h> 
 #include <sys/socket.h> 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/uio.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #define MAX 100
 #define PORT 8080 
+#define MAX_CLIENT 20
 #define SA struct sockaddr
 
 void sentFile(int sockfd, const char *file_name, int size) { 
-    char buff[MAX];       // for read operation from file and used to sent operation 
-    
-    // create file 
+    char buff[MAX];     
+
     FILE *fp;
-    fp=fopen(file_name,"r");  // open file uses both stdio and stdin header files
-            // file should be present at the program directory
+    fp=fopen(file_name,"r");  
     if( fp == NULL ){
     printf("Error IN Opening File .. \n");
     return ;
     }
     
-    while ( fgets(buff,MAX,fp) != NULL ) // fgets reads upto MAX character or EOF 
-    send(sockfd,buff,size,0);  // sent the file data to stream
+    while ( fgets(buff,MAX,fp) != NULL ) 
+    send(sockfd,buff,size,0);  
     
-    fclose (fp);       // close the file 
+    fclose (fp);  
     
     printf("File Sent successfully !!! \n");
     
 }
 
 long int findSize(const char *file_name) {
-    struct stat st; /*declare stat variable*/
-     
-    /*get the size using stat()*/
-     
+    struct stat st; 
     if(stat(file_name,&st)==0)
         return (st.st_size);
     else
@@ -44,65 +43,103 @@ long int findSize(const char *file_name) {
 }
 
 int main() { 
-    char filename[MAX];
-    int sockfd, connfd, len, fsize;     // create socket file descriptor 
-    struct sockaddr_in servaddr, cli;   // create structure object of sockaddr_in for client and server
-    // socket create and verification 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);    // creating a TCP socket ( SOCK_STREAM )
-    
-    if (sockfd == -1) { 
+    int sockfd, len, fsize; 
+    struct sockaddr_in servaddr, cli; 
+    int connfd[MAX_CLIENT] = {0};
+    char filename[MAX]; 
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0); 
+    if (sockfd < 0) { 
         printf("socket creation failed...\n"); 
         exit(0); 
-    } 
-    else
-    printf("Socket successfully created..\n"); 
-    
-    // empty the 
+    } else
+        printf("Socket successfully created..\n"); 
+        
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+    int fl = fcntl(sockfd, F_GETFL, 0);
+    fl |= O_NONBLOCK;
+    fcntl(sockfd, F_SETFL, fl);
+
     bzero(&servaddr, sizeof(servaddr));
-    // assign IP, PORT 
-    servaddr.sin_family = AF_INET;     // specifies address family with IPv4 Protocol 
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);  // binds to any address
-    servaddr.sin_port = htons(PORT);     // binds to PORT specified
-    // Binding newly created socket to given IP and verification 
-    if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) { 
+
+    servaddr.sin_family = AF_INET; 
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY); 
+    servaddr.sin_port = htons(PORT); 
+
+    if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) < 0) { 
         printf("socket bind failed...\n"); 
         exit(0); 
     } 
     else
-    printf("Socket successfully binded..\n");
-    // Now server is ready to listen and verification 
-    if ((listen(sockfd, 5)) != 0) { 
-        printf("Listen failed...\n"); 
-        exit(0); 
-    } 
-    else
-        printf("Server listening..\n"); 
-    
-    len = sizeof(cli);
-    // Accept the data packet from client and verification 
-    connfd = accept(sockfd, (SA*)&cli, &len);  // accepts connection from socket
-    
-    if (connfd < 0) { 
-        printf("server acccept failed...\n"); 
-        exit(0); 
-    } 
-    else
-        printf("server acccept the client...\n");
-    
-    while (1) {
-        int n = recv(sockfd, filename, sizeof(filename), 0);
-        if (n > 0) {
-            if (strncmp("exit", filename, 4)) {
-                close(sockfd);
-                break;
-            }
-            fsize = findSize(filename);
-            if ((fsize > 0) && (fsize < 9999)) {
-                send(sockfd, fsize, 4, 0);
-                sentFile(sockfd, filename, fsize);
-            } else
-                send(sockfd, "0000", 4, 0);
-        }
+        printf("Socket successfully binded..\n"); 
+
+
+    if (listen(sockfd, 5) < 0) { 
+        printf("Error listening\n");
     }
 
+    while (1) {		
+        fd_set set;		
+        FD_ZERO(&set);
+        FD_SET(sockfd, &set);		
+        FD_SET(STDIN_FILENO, &set);	
+        int maxfd = sockfd;
+        for (int i = 0; i < MAX_CLIENT; i++) {
+            if (connfd[i] > 0) {
+                FD_SET(connfd[i], &set);
+                if (connfd[i] > maxfd) maxfd = connfd[i];
+            }
+        }
+        select(maxfd+1, &set, NULL, NULL, NULL);
+
+        if (FD_ISSET(STDIN_FILENO, &set)) {
+            memset(filename, 0, sizeof(filename));
+            int n = read(STDIN_FILENO, filename, sizeof(filename));
+            for (int i = 0; i < MAX_CLIENT; i++) { 
+                if (connfd[i] > 0) {
+                    write(connfd[i], filename, strlen(filename));
+                    break;
+                }
+            }			
+        }
+
+        if (FD_ISSET(sockfd, &set)) {
+
+            len = sizeof(cli); 
+            int clientfd = accept(sockfd, (SA*)&cli, &len); 
+
+            fl = fcntl(clientfd, F_GETFL, 0);
+            fl |= O_NONBLOCK;
+            fcntl(clientfd, F_SETFL, fl);
+
+            for (int i = 0; i < MAX_CLIENT; i++) { 
+                if (connfd[i] == 0) {
+                    connfd[i] = clientfd;
+                    printf("accepted client %d, index #%d\n", clientfd, i);
+                    break; 
+                }
+            }
+        }
+
+		for (int i = 0; i < MAX_CLIENT; i++) {
+			if (connfd[i] > 0 && FD_ISSET(connfd[i], &set)) {
+				if (read(connfd[i], filename, sizeof(filename)) > 0) {
+                    if (strncmp("exit", filename, 4)) {
+                        close(sockfd);
+                        break;
+                    }
+                    fsize = findSize(filename);
+                    if ((fsize > 0) && (fsize < 9999)) {
+                        send(sockfd, fsize, 4, 0);
+                        sentFile(sockfd, filename,fsize);
+                    } else
+                        send(sockfd, "0000", 4, 0);
+				}
+				else {
+					printf("connection %d has disconnected.\n", connfd[i]);
+					connfd[i] = 0;
+				}
+			} 
+		}
+    }
 }
